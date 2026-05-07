@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>F1 Lap Overlay (Pro)</title>
+
+  <style>
+    :root {
+      --bg: rgba(0, 0, 0, 0.68);
+      --panel: rgba(255, 255, 255, 0.06);
+      --panel2: rgba(0, 0, 0, 0.35);
+      --text: rgba(255, 255, 255, 0.92);
+      --muted: rgba(255, 255, 255, 0.62);
+
+      --accent: #ff0033; /* F1-ish red */
+      --accent2: #00ff88; /* green */
+
+      --good: #00ff88;
+      --bad: #ff3b3b;
+      --line: rgba(255, 255, 255, 0.12);
+
+      --w: 180px;
+      --radius: 14px;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      overflow: hidden;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Helvetica Neue", Helvetica, "Noto Sans", "Liberation Sans", sans-serif;
+    }
+
+    .hud {
+      position: absolute;
+      top: 26px;
+      left: 26px;
+      width: var(--w);
+      color: var(--text);
+      background: var(--bg);
+      border-radius: var(--radius);
+      contain: layout paint style;
+      user-select: none;
+      -webkit-user-select: none;
+      transform: translateZ(0);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 10px;
+      border-radius: var(--radius) var(--radius) 0 0;
+      background: linear-gradient(90deg, rgba(255,0,51,0.9), rgba(255,0,51,0.25));
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .brand {
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.95);
+    }
+
+    .status {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 11px;
+      color: rgba(255,255,255,0.92);
+      letter-spacing: 0.04em;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.45);
+      box-shadow: 0 0 0 2px rgba(0,0,0,0.25);
+    }
+
+    .dot.running {
+      background: var(--accent2);
+      box-shadow: 0 0 18px rgba(0,255,136,0.45), 0 0 0 2px rgba(0,0,0,0.25);
+    }
+
+    .content {
+      padding: 10px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03));
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 12px;
+      padding: 10px;
+      overflow: hidden;
+    }
+
+    .label {
+      font-size: 11px; /* compact */
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .value {
+      margin-top: 6px;
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum" 1;
+      line-height: 1.0;
+    }
+
+    .current {
+      font-size: 40px;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      color: rgba(255,255,255,0.96);
+      text-shadow: 0 0 18px rgba(0,0,0,0.45);
+    }
+
+    .bestWrap {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .best {
+      font-size: 28px; /* emphasized but compact */
+      font-weight: 900;
+      color: var(--accent2);
+      text-shadow: 0 0 14px rgba(0,255,136,0.35);
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .last {
+      font-size: 18px;
+      font-weight: 800;
+      color: rgba(255,255,255,0.94);
+    }
+
+    .delta {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .delta.good { color: var(--good); }
+    .delta.bad { color: var(--bad); }
+
+    .list {
+      margin-top: 10px;
+      border-top: 1px solid var(--line);
+      padding-top: 8px;
+    }
+
+    .listHead {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .listTitle {
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: 800;
+      color: rgba(255,255,255,0.78);
+    }
+
+    .laps {
+      max-height: 940px;
+      overflow: hidden; /* keep layout stable for OBS */
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .lap {
+      display: grid;
+      grid-template-columns: 34px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 6px 8px;
+      border-radius: 10px;
+      background: rgba(0,0,0,0.22);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .lapNo {
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.62);
+    }
+
+    .lapTime {
+      font-size: 13px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: rgba(255,255,255,0.92);
+    }
+
+    .lapDelta {
+      font-size: 10px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      color: rgba(255,255,255,0.62);
+      white-space: nowrap;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    .labelRow {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .lapCounter {
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.78);
+      white-space: nowrap;
+    }
+
+    .lapDelta.good { color: var(--good); }
+    .lapDelta.bad { color: var(--bad); }
+
+    /* Reduce paint work on slower GPUs */
+    @media (prefers-reduced-motion: reduce) {
+      .hud { box-shadow: none; }
+      .current, .best { text-shadow: none; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="hud" role="presentation" aria-hidden="true">
+    <div class="topbar">
+      <div class="brand">LAP TIMER</div>
+      <div class="status">
+        <span id="runDot" class="dot"></span>
+        <span id="runText">STOPPED</span>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="grid">
+        <div class="card">
+          <div class="labelRow">
+            <div class="label">CURRENT LAP</div>
+            <div id="lapNo" class="lapCounter">0</div>
+          </div>
+          <div id="current" class="value current mono">00.000</div>
+        </div>
+
+        <div class="card">
+          <div class="bestWrap">
+            <div>
+              <div class="labelRow">
+                <div class="label">BEST LAP</div>
+                <div id="bestLapNo" class="lapCounter">--</div>
+              </div>
+              <div id="best" class="value best mono">--</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="display: none;">
+          <div class="row">
+            <div>
+              <div class="label">LAST LAP</div>
+              <div id="last" class="value last mono">--</div>
+            </div>
+            <div id="lastDelta" class="delta mono">--</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="list">
+        <div class="listHead">
+          <div class="listTitle">LAPS</div>
+        </div>
+        <div id="laps" class="laps"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Performance goals:
+    // - Throttle updates to 30fps (or less)
+    // - Avoid layout thrash: cache DOM elements
+    // - Avoid unnecessary DOM writes: only update text when changed
+
+    const MAX_LAPS = 15; // shows last N laps to keep DOM small and stable
+
+    const elCurrent = document.getElementById('current');
+    const elLast = document.getElementById('last');
+    const elBest = document.getElementById('best');
+    const elLastDelta = document.getElementById('lastDelta');
+    const elLaps = document.getElementById('laps');
+    const elRunDot = document.getElementById('runDot');
+    const elRunText = document.getElementById('runText');
+    const elLapNo = document.getElementById('lapNo');
+    const elBestLapNo = document.getElementById('bestLapNo');
+
+    let running = false;
+    let startTime = performance.now();
+
+    /** @type {number | null} */
+    let lastLapMs = null;
+    /** @type {number | null} */
+    let bestLapMs = null;
+
+    let bestLapIndex = 0;
+
+    /** @type {{n:number, ms:number, deltaMs:number|null}[]} */
+    let laps = [];
+
+    let completedLapCount = 0;
+
+    let lastRenderedCurrent = '';
+
+    function pad2(n) {
+      return n < 10 ? '0' + n : '' + n;
+    }
+
+    function pad3(n) {
+      if (n < 10) return '00' + n;
+      if (n < 100) return '0' + n;
+      return '' + n;
+    }
+
+    // Formats to SS.mmm (no minutes). If over 60s, it will show like 62.304.
+    function formatLap(ms) {
+      const total = Math.max(0, ms | 0);
+      const seconds = (total / 1000) | 0;
+      const milli = (total % 1000) | 0;
+      return pad2(seconds) + '.' + pad3(milli);
+    }
+
+    // Formats delta like ▲0.123 / ▼0.123 (relative to previous lap)
+    function formatDelta(deltaMs) {
+      if (deltaMs === null) return { text: '--', cls: '' };
+      const abs = Math.abs(deltaMs);
+      const seconds = (abs / 1000) | 0;
+      const milli = (abs % 1000) | 0;
+      const val = seconds + '.' + pad3(milli);
+      if (deltaMs < 0) return { text: '▲' + val, cls: 'good' };
+      if (deltaMs > 0) return { text: '▼' + val, cls: 'bad' };
+      return { text: '—' + val, cls: '' };
+    }
+
+    function setText(el, value) {
+      if (el.textContent !== value) el.textContent = value;
+    }
+
+    function setDelta(el, delta) {
+      const d = formatDelta(delta);
+      if (el.textContent !== d.text) el.textContent = d.text;
+      el.classList.toggle('good', d.cls === 'good');
+      el.classList.toggle('bad', d.cls === 'bad');
+    }
+
+    function renderRunState() {
+      elRunDot.classList.toggle('running', running);
+      setText(elRunText, running ? 'RUNNING' : 'STOPPED');
+    }
+
+    function renderLapList() {
+      // Only keep last MAX_LAPS.
+      const slice = laps.length > MAX_LAPS ? laps.slice(laps.length - MAX_LAPS) : laps;
+
+      // Build HTML once; MAX_LAPS is small and stable, this is faster than many DOM ops.
+      let html = '';
+      for (let i = 0; i < slice.length; i++) {
+        const item = slice[i];
+        const d = formatDelta(item.deltaMs);
+        const deltaClass = d.cls ? 'lapDelta ' + d.cls : 'lapDelta';
+        html +=
+          '<div class="lap">' +
+            '<div class="lapNo">' + item.n + '</div>' +
+            '<div class="lapTime mono">' + formatLap(item.ms) + '</div>' +
+            '<div class="' + deltaClass + '">' + d.text + '</div>' +
+          '</div>';
+      }
+      // One write
+      elLaps.innerHTML = html;
+    }
+
+    function renderLapCounter() {
+      // completed laps + current running lap = completed + 1 (when running)
+      const currentLapNo = running ? (completedLapCount + 1) : completedLapCount;
+      setText(elLapNo, currentLapNo);
+    }
+
+    function start() {
+      startTime = performance.now();
+      running = true;
+      renderRunState();
+      renderLapCounter();
+    }
+
+    function stop() {
+      running = false;
+      renderRunState();
+    }
+
+    function reset() {
+      running = false;
+      startTime = performance.now();
+      lastLapMs = null;
+      bestLapMs = null;
+      bestLapIndex = 0;
+      laps = [];
+      completedLapCount = 0;
+
+      lastRenderedCurrent = '';
+      setText(elCurrent, '00.000');
+      setText(elLast, '--');
+      setText(elBest, '--');
+      setText(elBestLapNo, '--');
+      setText(elLastDelta, '--');
+      elLastDelta.classList.remove('good', 'bad');
+      renderLapList();
+      renderRunState();
+      renderLapCounter();
+    }
+
+    function lap() {
+      if (!running) return;
+
+      const now = performance.now();
+      const lapMs = now - startTime;
+
+      const prevLap = lastLapMs;
+      lastLapMs = lapMs;
+
+      const deltaMs = prevLap === null ? null : lapMs - prevLap;
+
+      // best lap
+      const newBest = bestLapMs === null || lapMs < bestLapMs;
+      if (newBest) {
+        bestLapMs = lapMs;
+        bestLapIndex = laps.length + 1;
+      }
+
+      // Update summary fields
+      setText(elLast, formatLap(lapMs));
+      setDelta(elLastDelta, deltaMs);
+
+      setText(elBest, bestLapMs === null ? '--' : formatLap(bestLapMs));
+      setText(elBestLapNo, bestLapIndex ? String(bestLapIndex) : '--');
+
+      // Add to list
+      const n = laps.length + 1;
+      laps.push({ n, ms: lapMs, deltaMs });
+      completedLapCount = laps.length;
+      renderLapList();
+      renderLapCounter();
+
+      // reset lap timer
+      startTime = performance.now();
+      lastRenderedCurrent = '';
+    }
+
+    // RAF loop (same behavior as the original overlay): update every frame while running
+    function tick() {
+      if (running) {
+        const now = performance.now();
+        const elapsed = now - startTime;
+        const text = formatLap(elapsed);
+        if (text !== lastRenderedCurrent) {
+          lastRenderedCurrent = text;
+          elCurrent.textContent = text;
+        }
+      }
+
+      requestAnimationFrame(tick);
+    }
+
+    // Hotkeys
+    document.addEventListener('keydown', (e) => {
+      // Avoid repeat spamming when holding key
+      if (e.repeat) return;
+
+      const code = e.keyCode;
+      if (code === 32) start(); // Space
+      if (code === 88) start(); // X
+      if (code === 76) lap();   // L
+      if (code === 83) stop();  // S
+      if (code === 82) reset(); // R
+    });
+
+    // Initial paint
+    reset();
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>

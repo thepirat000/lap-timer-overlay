@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>F1 Lap Overlay (Pro v2)</title>
+
+  <style>
+    :root {
+      --bg: rgba(0, 0, 0, 0.68);
+      --panel: rgba(255, 255, 255, 0.06);
+      --panel2: rgba(0, 0, 0, 0.35);
+      --text: rgba(255, 255, 255, 0.92);
+      --muted: rgba(255, 255, 255, 0.62);
+
+      --accent: #ff0033; /* F1-ish red */
+      --accent2: #00ff88; /* green */
+
+      --good: #00ff88;
+      --bad: #ff3b3b;
+      --line: rgba(255, 255, 255, 0.12);
+
+      --w: 220px;
+      --radius: 14px;
+
+      --lapsH: 490px; /* constant list height */
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      overflow: hidden;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Helvetica Neue", Helvetica, "Noto Sans", "Liberation Sans", sans-serif;
+    }
+
+    .hud {
+      position: absolute;
+      top: 26px;
+      left: 26px;
+      width: var(--w);
+      color: var(--text);
+      background: var(--bg);
+      border-radius: var(--radius);
+      contain: layout paint style;
+      user-select: none;
+      -webkit-user-select: none;
+      transform: translateZ(0);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 10px;
+      border-radius: var(--radius) var(--radius) 0 0;
+      background: linear-gradient(90deg, rgba(255,0,51,0.9), rgba(255,0,51,0.25));
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .brand {
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.95);
+    }
+
+    .status {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 11px;
+      color: rgba(255,255,255,0.92);
+      letter-spacing: 0.04em;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.45);
+      box-shadow: 0 0 0 2px rgba(0,0,0,0.25);
+    }
+
+    .dot.running {
+      background: var(--accent2);
+      box-shadow: 0 0 18px rgba(0,255,136,0.45), 0 0 0 2px rgba(0,0,0,0.25);
+    }
+
+    .content {
+      padding: 10px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03));
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 12px;
+      padding: 10px;
+      overflow: hidden;
+    }
+
+    .label {
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 900;
+    }
+
+    .value {
+      margin-top: 6px;
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum" 1;
+      line-height: 1.0;
+    }
+
+    .current {
+      font-size: 44px;
+      font-weight: 950;
+      letter-spacing: 0.02em;
+      color: rgba(255,255,255,0.96);
+      text-shadow: 0 0 18px rgba(0,0,0,0.45);
+    }
+
+    .bestWrap {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .best {
+      font-size: 30px;
+      font-weight: 950;
+      color: var(--accent2);
+      text-shadow: 0 0 14px rgba(0,255,136,0.35);
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .last {
+      font-size: 18px;
+      font-weight: 800;
+      color: rgba(255,255,255,0.94);
+    }
+
+    .delta {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .delta.good { color: var(--good); }
+    .delta.bad { color: var(--bad); }
+
+    .list {
+      margin-top: 10px;
+      border-top: 1px solid var(--line);
+      padding-top: 8px;
+    }
+
+    .listHead {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .listTitle {
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: 900;
+      color: rgba(255,255,255,0.78);
+    }
+
+    .laps {
+      height: var(--lapsH);
+      max-height: var(--lapsH);
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 2px 2px 0;
+      border-radius: 12px;
+      background: radial-gradient(120% 120% at 30% 0%, rgba(255,255,255,0.06), rgba(0,0,0,0.08));
+      border: 1px solid rgba(255,255,255,0.09);
+    }
+
+    .laps {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .laps::-webkit-scrollbar { width: 0; height: 0; }
+
+    .lap {
+      display: grid;
+      grid-template-columns: 32px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 5px 7px;
+      border-radius: 10px;
+      background: rgba(0,0,0,0.20);
+      border: 1px solid rgba(255,255,255,0.07);
+      will-change: transform, filter;
+    }
+
+    .lapNo {
+      font-size: 10px;
+      font-weight: 950;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.62);
+    }
+
+    .lapTime {
+      font-size: 14px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      color: rgba(255,255,255,0.92);
+    }
+
+    .lapDelta {
+      font-size: 10px;
+      font-weight: 950;
+      font-variant-numeric: tabular-nums;
+      color: rgba(255,255,255,0.62);
+      white-space: nowrap;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    .labelRow {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .lapCounter {
+      font-size: 13px;
+      font-weight: 950;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.86);
+      white-space: nowrap;
+    }
+
+    .lapDelta.good { color: var(--good); }
+    .lapDelta.bad { color: var(--bad); }
+
+    /* Best lap highlight (list) */
+    .lap.best {
+      border-color: rgba(0,255,136,0.75);
+      box-shadow: 0 0 0 1px rgba(0,255,136,0.45) inset, 0 0 16px rgba(0,255,136,0.18);
+      background: linear-gradient(90deg, rgba(0,255,136,0.08), rgba(0,0,0,0.16));
+    }
+
+    /* Lap complete animation */
+    @keyframes lapFlash {
+      0% { box-shadow: 0 0 0 rgba(255,0,51,0.0); }
+      15% { box-shadow: 0 0 0 2px rgba(255,0,51,0.22), 0 0 26px rgba(255,0,51,0.25); }
+      100% { box-shadow: 0 0 0 rgba(255,0,51,0.0); }
+    }
+
+    @keyframes lapPop {
+      0% { transform: translateY(-6px) scale(0.99); filter: brightness(1.15); }
+      55% { transform: translateY(0) scale(1.01); filter: brightness(1.35); }
+      100% { transform: translateY(0) scale(1); filter: brightness(1.0); }
+    }
+
+    .laps.flash {
+      animation: lapFlash 520ms ease-out 1;
+    }
+
+    .lap.is-new {
+      animation: lapPop 520ms cubic-bezier(.2,.9,.2,1) 1;
+    }
+
+    /* Reduce paint work on slower GPUs */
+    @media (prefers-reduced-motion: reduce) {
+      .hud { box-shadow: none; }
+      .current, .best { text-shadow: none; }
+      .laps.flash, .lap.is-new { animation: none; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="hud" role="presentation" aria-hidden="true">
+    <div class="topbar">
+      <div class="brand">LAP TIMER</div>
+      <div class="status">
+        <span id="runDot" class="dot"></span>
+        <span id="runText">STOPPED</span>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="grid">
+        <div class="card">
+          <div class="labelRow">
+            <div class="label">CURRENT LAP</div>
+            <div id="lapNo" class="lapCounter">0</div>
+          </div>
+          <div id="current" class="value current mono">00.000</div>
+        </div>
+
+        <div class="card">
+          <div class="bestWrap">
+            <div>
+              <div class="labelRow">
+                <div class="label">BEST LAP</div>
+                <div id="bestLapNo" class="lapCounter">--</div>
+              </div>
+              <div id="best" class="value best mono">--</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="display: none;">
+          <div class="row">
+            <div>
+              <div class="label">LAST LAP</div>
+              <div id="last" class="value last mono">--</div>
+            </div>
+            <div id="lastDelta" class="delta mono">--</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="list">
+        <div class="listHead">
+          <div class="listTitle">LAPS</div>
+        </div>
+        <div id="laps" class="laps"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const MAX_LAPS = 22;
+
+    const elCurrent = document.getElementById('current');
+    const elLast = document.getElementById('last');
+    const elBest = document.getElementById('best');
+    const elLastDelta = document.getElementById('lastDelta');
+    const elLaps = document.getElementById('laps');
+    const elRunDot = document.getElementById('runDot');
+    const elRunText = document.getElementById('runText');
+    const elLapNo = document.getElementById('lapNo');
+    const elBestLapNo = document.getElementById('bestLapNo');
+
+    let running = false;
+    let startTime = performance.now();
+
+    /** @type {number | null} */
+    let lastLapMs = null;
+    /** @type {number | null} */
+    let bestLapMs = null;
+
+    let bestLapIndex = 0;
+
+    /** @type {{n:number, ms:number, deltaMs:number|null}[]} */
+    let laps = [];
+
+    let completedLapCount = 0;
+
+    let lastRenderedCurrent = '';
+
+    let lapFlashTimer = 0;
+
+
+    function pad2(n) {
+      return n < 10 ? '0' + n : '' + n;
+    }
+
+    function pad3(n) {
+      if (n < 10) return '00' + n;
+      if (n < 100) return '0' + n;
+      return '' + n;
+    }
+
+    function formatLap(ms) {
+      const total = Math.max(0, ms | 0);
+      const seconds = (total / 1000) | 0;
+      const milli = (total % 1000) | 0;
+      return pad2(seconds) + '.' + pad3(milli);
+    }
+
+    function formatDelta(deltaMs) {
+      if (deltaMs === null) return { text: '--', cls: '' };
+      const abs = Math.abs(deltaMs);
+      const seconds = (abs / 1000) | 0;
+      const milli = (abs % 1000) | 0;
+      const val = seconds + '.' + pad3(milli);
+      if (deltaMs < 0) return { text: '▲' + val, cls: 'good' };
+      if (deltaMs > 0) return { text: '▼' + val, cls: 'bad' };
+      return { text: '—' + val, cls: '' };
+    }
+
+    function setText(el, value) {
+      if (el.textContent !== value) el.textContent = value;
+    }
+
+    function setDelta(el, delta) {
+      const d = formatDelta(delta);
+      if (el.textContent !== d.text) el.textContent = d.text;
+      el.classList.toggle('good', d.cls === 'good');
+      el.classList.toggle('bad', d.cls === 'bad');
+    }
+
+    function renderRunState() {
+      elRunDot.classList.toggle('running', running);
+      setText(elRunText, running ? 'RUNNING' : 'STOPPED');
+    }
+
+    function renderLapList(newLapNo) {
+      const slice = laps.length > MAX_LAPS ? laps.slice(laps.length - MAX_LAPS) : laps;
+
+      let html = '';
+      for (let i = 0; i < slice.length; i++) {
+        const item = slice[i];
+        const d = formatDelta(item.deltaMs);
+        const deltaClass = d.cls ? 'lapDelta ' + d.cls : 'lapDelta';
+
+        const isBest = bestLapIndex === item.n;
+        const isNew = newLapNo === item.n;
+
+        const lapClass = isBest ? 'lap best' : 'lap';
+        const newAttr = isNew ? ' data-new="1"' : '';
+
+        html +=
+          '<div class="' + lapClass + '"' + newAttr + '>' +
+            '<div class="lapNo">' + item.n + '</div>' +
+            '<div class="lapTime mono">' + formatLap(item.ms) + '</div>' +
+            '<div class="' + deltaClass + '">' + d.text + '</div>' +
+          '</div>';
+      }
+
+      elLaps.innerHTML = html;
+
+      // Auto-scroll to latest lap when list overflows fixed height.
+      elLaps.scrollTop = elLaps.scrollHeight;
+
+      if (newLapNo != null) {
+        const node = elLaps.querySelector('[data-new="1"]');
+        if (node) {
+          node.classList.add('is-new');
+          requestAnimationFrame(() => node.removeAttribute('data-new'));
+        }
+      }
+    }
+
+    function renderLapCounter() {
+      const currentLapNo = running ? (completedLapCount + 1) : completedLapCount;
+      setText(elLapNo, currentLapNo);
+    }
+
+    function flashOnLapComplete() {
+      elLaps.classList.remove('flash');
+      void elLaps.offsetWidth;
+      elLaps.classList.add('flash');
+
+      if (lapFlashTimer) window.clearTimeout(lapFlashTimer);
+      lapFlashTimer = window.setTimeout(() => elLaps.classList.remove('flash'), 650);
+    }
+
+    function start() {
+      startTime = performance.now();
+      running = true;
+      renderRunState();
+      renderLapCounter();
+    }
+
+    function stop() {
+      running = false;
+      renderRunState();
+      renderLapCounter();
+    }
+
+    function reset() {
+      running = false;
+      startTime = performance.now();
+      lastLapMs = null;
+      bestLapMs = null;
+      bestLapIndex = 0;
+      laps = [];
+      completedLapCount = 0;
+      elLaps.scrollTop = 0;
+
+      lastRenderedCurrent = '';
+      setText(elCurrent, '00.000');
+      setText(elLast, '--');
+      setText(elBest, '--');
+      setText(elBestLapNo, '--');
+      setText(elLastDelta, '--');
+      elLastDelta.classList.remove('good', 'bad');
+      renderLapList();
+      renderRunState();
+      renderLapCounter();
+    }
+
+    function lap() {
+      if (!running) return;
+
+      const now = performance.now();
+      const lapMs = now - startTime;
+
+      const prevLap = lastLapMs;
+      lastLapMs = lapMs;
+
+      const deltaMs = prevLap === null ? null : lapMs - prevLap;
+
+      const n = laps.length + 1;
+
+      const newBest = bestLapMs === null || lapMs < bestLapMs;
+      if (newBest) {
+        bestLapMs = lapMs;
+        bestLapIndex = n;
+      }
+
+      setText(elLast, formatLap(lapMs));
+      setDelta(elLastDelta, deltaMs);
+
+      setText(elBest, bestLapMs === null ? '--' : formatLap(bestLapMs));
+      setText(elBestLapNo, bestLapIndex ? String(bestLapIndex) : '--');
+
+      laps.push({ n, ms: lapMs, deltaMs });
+      completedLapCount = laps.length;
+
+      renderLapList(n);
+      renderLapCounter();
+      flashOnLapComplete();
+
+      startTime = performance.now();
+      lastRenderedCurrent = '';
+    }
+
+    function tick() {
+      if (running) {
+        const now = performance.now();
+        const elapsed = now - startTime;
+        const text = formatLap(elapsed);
+        if (text !== lastRenderedCurrent) {
+          lastRenderedCurrent = text;
+          elCurrent.textContent = text;
+        }
+      }
+
+      requestAnimationFrame(tick);
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.repeat) return;
+
+      const code = e.keyCode;
+      if (code === 32) start(); // Space
+      if (code === 88) start(); // X
+      if (code === 76) lap();   // L
+      if (code === 83) stop();  // S
+      if (code === 82) reset(); // R
+    });
+
+    reset();
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Lap Timer</title>
+<style>
+  body {
+    margin: 0;
+    background: transparent;
+    overflow: hidden;
+    font-family: monospace;
+    color: #00ffcc;
+  }
+
+  #container {
+    padding: 10px 20px;
+    background: rgba(0,0,0,0.5);
+    border-radius: 10px;
+    display: inline-block;
+  }
+
+  #current {
+    font-size: 48px;
+  }
+
+  #last, #best {
+    font-size: 20px;
+    opacity: 0.8;
+  }
+</style>
+</head>
+<body>
+<div id="container">
+  <div id="current">00.000</div>
+  <div id="last">Last: --</div>
+  <div id="best">Best: --</div>
+</div>
+
+<script>
+let startTime = null;
+let running = false;
+let lastLap = null;
+let bestLap = null;
+
+function format(ms) {
+  let totalSeconds = ms / 1000;
+
+  let seconds = Math.floor(totalSeconds);
+  let milliseconds = Math.floor((totalSeconds - seconds) * 1000);
+
+  return `${String(seconds).padStart(2,'0')}.${String(milliseconds).padStart(3,'0')}`;
+}
+
+function update() {
+  if (running) {
+    let now = performance.now();
+    let elapsed = now - startTime;
+    document.getElementById("current").innerText = format(elapsed);
+  }
+  requestAnimationFrame(update);
+}
+
+function start() {
+  startTime = performance.now();
+  running = true;
+}
+
+function lap() {
+  if (!running) return;
+
+  let now = performance.now();
+  let elapsed = now - startTime;
+
+  lastLap = elapsed;
+
+  if (bestLap === null || elapsed < bestLap) {
+    bestLap = elapsed;
+  }
+
+  document.getElementById("last").innerText = "Last: " + format(lastLap);
+  document.getElementById("best").innerText = "Best: " + format(bestLap);
+
+  startTime = performance.now(); // reset for next lap
+}
+
+function stop() {
+  running = false;
+}
+
+function reset() {
+  running = false;
+  startTime = null;
+  lastLap = null;
+  bestLap = null;
+
+  document.getElementById("current").innerText = "00.000";
+  document.getElementById("last").innerText = "Last: --";
+  document.getElementById("best").innerText = "Best: --";
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.code === "Space") start();
+  if (e.code === "KeyL") lap();     // press L for lap
+  if (e.code === "KeyS") stop();    // press S to stop
+  if (e.code === "KeyR") reset();   // press R to reset
+});
+
+update();
+</script>
+</body>
+</html>
