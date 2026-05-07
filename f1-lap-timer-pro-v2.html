@@ -20,7 +20,7 @@
       --bad: #ff3b3b;
       --line: rgba(255, 255, 255, 0.12);
 
-      --w: 220px;
+      --w: 180px;
       --radius: 14px;
 
       --lapsH: 490px; /* constant list height */
@@ -122,12 +122,113 @@
     }
 
     .current {
-      font-size: 44px;
+      font-size: 40px;
       font-weight: 950;
       letter-spacing: 0.02em;
       color: rgba(255,255,255,0.96);
       text-shadow: 0 0 18px rgba(0,0,0,0.45);
     }
+
+    /* Current lap complete animation */
+    @keyframes currentPulse {
+      0% { transform: translateZ(0) scale(1); filter: brightness(1) saturate(1); }
+      12% { transform: translateZ(0) scale(1.06); filter: brightness(1.95) saturate(1.25); }
+      38% { transform: translateZ(0) scale(1.02); filter: brightness(1.35) saturate(1.10); }
+      100% { transform: translateZ(0) scale(1); filter: brightness(1) saturate(1); }
+    }
+
+    @keyframes currentSweep {
+      0% { transform: translateX(-140%); opacity: 0; }
+      10% { opacity: 0.95; }
+      55% { opacity: 0.35; }
+      100% { transform: translateX(140%); opacity: 0; }
+    }
+
+    @keyframes lapNoPulse {
+      0% { transform: translateZ(0) scale(1); filter: brightness(1); }
+      14% { transform: translateZ(0) scale(1.12); filter: brightness(1.7); }
+      45% { transform: translateZ(0) scale(1.04); filter: brightness(1.15); }
+      100% { transform: translateZ(0) scale(1); filter: brightness(1); }
+    }
+    .current.is-complete {
+      transform-origin: 20% 65%;
+      animation: currentPulse 1850ms cubic-bezier(.2,.9,.2,1) 1;
+      text-shadow:
+        0 0 18px rgba(0,0,0,0.45),
+        0 0 18px rgba(255,0,51,0.55),
+        0 0 46px rgba(255,0,51,0.38);
+    }
+
+    .current {
+      position: relative;
+      will-change: transform, filter;
+    }
+
+    .current::after {
+      content: "";
+      pointer-events: none;
+      position: absolute;
+      inset: -10px -18px;
+      background:
+        linear-gradient(115deg,
+          rgba(255,255,255,0) 0%,
+          rgba(255,255,255,0.22) 35%,
+          rgba(255,0,51,0.30) 50%,
+          rgba(255,255,255,0.22) 65%,
+          rgba(255,255,255,0) 100%);
+      transform: translateX(-140%);
+      opacity: 0;
+      mix-blend-mode: screen;
+    }
+
+    .current.is-complete::after {
+      animation: currentSweep 1850ms cubic-bezier(.2,.9,.2,1) 1;
+    }
+
+    /* When a lap is a new best, use accent2 (green/cyan) for the current-lap hit */
+    @keyframes currentSweepBest {
+      0% { transform: translateX(-140%); opacity: 0; }
+      10% { opacity: 0.95; }
+      55% { opacity: 0.35; }
+      100% { transform: translateX(140%); opacity: 0; }
+    }
+
+    .current.is-complete.best-hit {
+      text-shadow:
+        0 0 18px rgba(0,0,0,0.45),
+        0 0 18px rgba(0,255,136,0.62),
+        0 0 46px rgba(0,255,136,0.38);
+    }
+
+    .current.best-hit::after {
+      background:
+        linear-gradient(115deg,
+          rgba(255,255,255,0) 0%,
+          rgba(255,255,255,0.22) 35%,
+          rgba(0,255,136,0.34) 50%,
+          rgba(255,255,255,0.22) 65%,
+          rgba(255,255,255,0) 100%);
+    }
+
+    .current.is-complete.best-hit::after {
+      animation: currentSweepBest 1850ms cubic-bezier(.2,.9,.2,1) 1;
+    }
+
+    #lapNo {
+      transform-origin: 50% 60%;
+      will-change: transform, filter;
+    }
+
+    #lapNo.is-complete {
+      animation: lapNoPulse 1300ms cubic-bezier(.2,.9,.2,1) 1;
+      text-shadow: 0 0 12px rgba(255,0,51,0.45), 0 0 22px rgba(255,0,51,0.25);
+      color: rgba(255,255,255,0.98);
+    }
+
+    #lapNo.is-complete.best-hit {
+      text-shadow: 0 0 12px rgba(0,255,136,0.45), 0 0 22px rgba(0,255,136,0.25);
+    }
+
 
     .bestWrap {
       display: grid;
@@ -141,6 +242,57 @@
       font-weight: 950;
       color: var(--accent2);
       text-shadow: 0 0 14px rgba(0,255,136,0.35);
+    }
+
+    /* Best lap achievement animation */
+    @keyframes bestHit {
+      0% { transform: translateZ(0) scale(1); filter: brightness(1) saturate(1); }
+      12% { transform: translateZ(0) scale(1.08); filter: brightness(1.85) saturate(1.28); }
+      40% { transform: translateZ(0) scale(1.03); filter: brightness(1.25) saturate(1.08); }
+      100% { transform: translateZ(0) scale(1); filter: brightness(1) saturate(1); }
+    }
+
+    @keyframes bestSweep {
+      0% { transform: translateX(-140%); opacity: 0; }
+      10% { opacity: 0.9; }
+      55% { opacity: 0.28; }
+      100% { transform: translateX(140%); opacity: 0; }
+    }
+
+    .best {
+      position: relative;
+      will-change: transform, filter;
+    }
+
+    .best::after {
+      content: "";
+      pointer-events: none;
+      position: absolute;
+      inset: -10px -16px;
+      background: linear-gradient(115deg,
+        rgba(255,255,255,0) 0%,
+        rgba(255,255,255,0.18) 35%,
+        rgba(0,255,136,0.26) 50%,
+        rgba(255,255,255,0.18) 65%,
+        rgba(255,255,255,0) 100%);
+      transform: translateX(-140%);
+      opacity: 0;
+      mix-blend-mode: screen;
+    }
+
+    .best.is-best {
+      animation: bestHit 1600ms cubic-bezier(.2,.9,.2,1) 1;
+      text-shadow: 0 0 14px rgba(0,255,136,0.35), 0 0 28px rgba(0,255,136,0.28);
+    }
+
+    .best.is-best::after {
+      animation: bestSweep 1600ms cubic-bezier(.2,.9,.2,1) 1;
+    }
+
+    #bestLapNo.is-best {
+      animation: bestHit 1200ms cubic-bezier(.2,.9,.2,1) 1;
+      text-shadow: 0 0 16px rgba(0,255,136,0.35);
+      color: rgba(255,255,255,0.98);
     }
 
     .row {
@@ -286,12 +438,13 @@
       100% { transform: translateY(0) scale(1); filter: brightness(1.0); }
     }
 
+
     .laps.flash {
-      animation: lapFlash 520ms ease-out 1;
+      animation: lapFlash 850ms ease-out 1;
     }
 
     .lap.is-new {
-      animation: lapPop 520ms cubic-bezier(.2,.9,.2,1) 1;
+      animation: lapPop 1050ms cubic-bezier(.2,.9,.2,1) 1;
     }
 
     /* Reduce paint work on slower GPUs */
@@ -299,6 +452,8 @@
       .hud { box-shadow: none; }
       .current, .best { text-shadow: none; }
       .laps.flash, .lap.is-new { animation: none; }
+      .current.is-complete, #lapNo.is-complete { animation: none; }
+      .best.is-best, #bestLapNo.is-best { animation: none; }
     }
   </style>
 </head>
@@ -384,8 +539,22 @@
     let completedLapCount = 0;
 
     let lastRenderedCurrent = '';
+    let lastRenderedMs = -1;
 
     let lapFlashTimer = 0;
+
+    let currentAnimTimer = 0;
+
+    let bestAnimTimer = 0;
+
+    /** @type {HTMLDivElement[]} */
+    const lapNodes = [];
+    /** @type {HTMLDivElement[]} */
+    const lapNoNodes = [];
+    /** @type {HTMLDivElement[]} */
+    const lapTimeNodes = [];
+    /** @type {HTMLDivElement[]} */
+    const lapDeltaNodes = [];
 
 
     function pad2(n) {
@@ -432,41 +601,79 @@
       setText(elRunText, running ? 'RUNNING' : 'STOPPED');
     }
 
+    function ensureLapPool() {
+      if (lapNodes.length) return;
+
+      const frag = document.createDocumentFragment();
+      for (let i = 0; i < MAX_LAPS; i++) {
+        const lapEl = document.createElement('div');
+        lapEl.className = 'lap';
+
+        const noEl = document.createElement('div');
+        noEl.className = 'lapNo';
+
+        const timeEl = document.createElement('div');
+        timeEl.className = 'lapTime mono';
+
+        const deltaEl = document.createElement('div');
+        deltaEl.className = 'lapDelta';
+
+        lapEl.appendChild(noEl);
+        lapEl.appendChild(timeEl);
+        lapEl.appendChild(deltaEl);
+
+        lapNodes.push(lapEl);
+        lapNoNodes.push(noEl);
+        lapTimeNodes.push(timeEl);
+        lapDeltaNodes.push(deltaEl);
+
+        frag.appendChild(lapEl);
+      }
+
+      elLaps.appendChild(frag);
+    }
+
     function renderLapList(newLapNo) {
-      const slice = laps.length > MAX_LAPS ? laps.slice(laps.length - MAX_LAPS) : laps;
+      ensureLapPool();
 
-      let html = '';
-      for (let i = 0; i < slice.length; i++) {
-        const item = slice[i];
+      const total = laps.length;
+      const visibleCount = Math.min(MAX_LAPS, total);
+      const startIndex = total > MAX_LAPS ? (total - MAX_LAPS) : 0;
+
+      for (let i = 0; i < MAX_LAPS; i++) {
+        const rowEl = lapNodes[i];
+
+        if (i >= visibleCount) {
+          rowEl.style.display = 'none';
+          rowEl.classList.remove('best', 'is-new');
+          continue;
+        }
+
+        const item = laps[startIndex + i];
         const d = formatDelta(item.deltaMs);
-        const deltaClass = d.cls ? 'lapDelta ' + d.cls : 'lapDelta';
-
         const isBest = bestLapIndex === item.n;
         const isNew = newLapNo === item.n;
 
-        const lapClass = isBest ? 'lap best' : 'lap';
-        const newAttr = isNew ? ' data-new="1"' : '';
+        rowEl.style.display = '';
+        rowEl.classList.toggle('best', isBest);
 
-        html +=
-          '<div class="' + lapClass + '"' + newAttr + '>' +
-            '<div class="lapNo">' + item.n + '</div>' +
-            '<div class="lapTime mono">' + formatLap(item.ms) + '</div>' +
-            '<div class="' + deltaClass + '">' + d.text + '</div>' +
-          '</div>';
-      }
+        setText(lapNoNodes[i], String(item.n));
+        setText(lapTimeNodes[i], formatLap(item.ms));
 
-      elLaps.innerHTML = html;
+        setText(lapDeltaNodes[i], d.text);
+        lapDeltaNodes[i].classList.toggle('good', d.cls === 'good');
+        lapDeltaNodes[i].classList.toggle('bad', d.cls === 'bad');
 
-      // Auto-scroll to latest lap when list overflows fixed height.
-      elLaps.scrollTop = elLaps.scrollHeight;
-
-      if (newLapNo != null) {
-        const node = elLaps.querySelector('[data-new="1"]');
-        if (node) {
-          node.classList.add('is-new');
-          requestAnimationFrame(() => node.removeAttribute('data-new'));
+        if (isNew) {
+          rowEl.classList.remove('is-new');
+          void rowEl.offsetWidth;
+          rowEl.classList.add('is-new');
+        } else {
+          rowEl.classList.remove('is-new');
         }
       }
+
+      elLaps.scrollTop = elLaps.scrollHeight;
     }
 
     function renderLapCounter() {
@@ -480,7 +687,43 @@
       elLaps.classList.add('flash');
 
       if (lapFlashTimer) window.clearTimeout(lapFlashTimer);
-      lapFlashTimer = window.setTimeout(() => elLaps.classList.remove('flash'), 650);
+      lapFlashTimer = window.setTimeout(() => elLaps.classList.remove('flash'), 1000);
+    }
+
+    function animateCurrentLapComplete(isBest) {
+      elCurrent.classList.remove('is-complete');
+      elLapNo.classList.remove('is-complete');
+      elCurrent.classList.remove('best-hit');
+      elLapNo.classList.remove('best-hit');
+      void elCurrent.offsetWidth;
+      elCurrent.classList.add('is-complete');
+      elLapNo.classList.add('is-complete');
+      if (isBest) {
+        elCurrent.classList.add('best-hit');
+        elLapNo.classList.add('best-hit');
+      }
+
+      if (currentAnimTimer) window.clearTimeout(currentAnimTimer);
+      currentAnimTimer = window.setTimeout(() => {
+        elCurrent.classList.remove('is-complete');
+        elLapNo.classList.remove('is-complete');
+        elCurrent.classList.remove('best-hit');
+        elLapNo.classList.remove('best-hit');
+      }, 2100);
+    }
+
+    function animateBestLap() {
+      elBest.classList.remove('is-best');
+      elBestLapNo.classList.remove('is-best');
+      void elBest.offsetWidth;
+      elBest.classList.add('is-best');
+      elBestLapNo.classList.add('is-best');
+
+      if (bestAnimTimer) window.clearTimeout(bestAnimTimer);
+      bestAnimTimer = window.setTimeout(() => {
+        elBest.classList.remove('is-best');
+        elBestLapNo.classList.remove('is-best');
+      }, 1800);
     }
 
     function start() {
@@ -497,6 +740,7 @@
     }
 
     function reset() {
+      ensureLapPool();
       running = false;
       startTime = performance.now();
       lastLapMs = null;
@@ -506,7 +750,20 @@
       completedLapCount = 0;
       elLaps.scrollTop = 0;
 
+      if (currentAnimTimer) window.clearTimeout(currentAnimTimer);
+      currentAnimTimer = 0;
+      elCurrent.classList.remove('is-complete');
+      elLapNo.classList.remove('is-complete');
+      elCurrent.classList.remove('best-hit');
+      elLapNo.classList.remove('best-hit');
+
+      if (bestAnimTimer) window.clearTimeout(bestAnimTimer);
+      bestAnimTimer = 0;
+      elBest.classList.remove('is-best');
+      elBestLapNo.classList.remove('is-best');
+
       lastRenderedCurrent = '';
+      lastRenderedMs = -1;
       setText(elCurrent, '00.000');
       setText(elLast, '--');
       setText(elBest, '--');
@@ -543,25 +800,33 @@
       setText(elBest, bestLapMs === null ? '--' : formatLap(bestLapMs));
       setText(elBestLapNo, bestLapIndex ? String(bestLapIndex) : '--');
 
+      if (newBest) animateBestLap();
+
       laps.push({ n, ms: lapMs, deltaMs });
       completedLapCount = laps.length;
 
       renderLapList(n);
       renderLapCounter();
       flashOnLapComplete();
+      animateCurrentLapComplete(newBest);
 
       startTime = performance.now();
       lastRenderedCurrent = '';
+      lastRenderedMs = -1;
     }
 
     function tick() {
       if (running) {
         const now = performance.now();
         const elapsed = now - startTime;
-        const text = formatLap(elapsed);
-        if (text !== lastRenderedCurrent) {
-          lastRenderedCurrent = text;
-          elCurrent.textContent = text;
+        const msInt = elapsed | 0;
+        if (msInt !== lastRenderedMs) {
+          lastRenderedMs = msInt;
+          const text = formatLap(msInt);
+          if (text !== lastRenderedCurrent) {
+            lastRenderedCurrent = text;
+            elCurrent.textContent = text;
+          }
         }
       }
 
